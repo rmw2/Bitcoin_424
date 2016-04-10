@@ -5,7 +5,7 @@ from scipy import sparse
 import sys, os.path
 # sklearn
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.metrics import f1_score, roc_auc_score as roc
+from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.preprocessing import Imputer
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -223,27 +223,31 @@ def compile_features(G, addr, saving=True):
 
 
 def evaluate(model, feats, mask):
-	# calcuate roc auc:
 	probs = model.predict_proba(feats)
-	auc = roc(mask, probs[:,1])
+	# calcuate roc auc:
+	roc = roc_auc_score(mask, probs[:,1])
+	# calculate precision-recall auc
+	prc = average_precision_score(mask, probs[:,1])
 
-	# calculate f1 error
-	pred = model.predict(feats)
-	f1 = f1_score(mask, pred)
-
-	return auc, f1
+	return roc, prc
 
 def train_test_print(model, train_feats, test_feats, train_mask, test_mask):
 	# fit
 	model.fit(train_feats, train_mask)
 
 	# evaluate performance
-	auc, f1 = evaluate(model, test_feats, test_mask)
-	auc_train, f1_train = evaluate(model, train_feats, train_mask)
-	print('ROC: %.3f  (%.3f)' % (auc, auc_train))
-	print('F1:  %.3f  (%.3f)' % (f1, f1_train))
+	roc, prc = evaluate(model, test_feats, test_mask)
+	roc_train, prc_train = evaluate(model, train_feats, train_mask)
 
-	return roc, f1
+
+	print('ROC: %.3f  (%.3f)' % (roc, roc_train))
+	print('PRC: %.3f  (%.3f)' % (prc, prc_train))
+
+	return roc, prc
+
+def pairwise_products(feats):
+	products = lambda x: np.asarray(np.mat(x).transpose() * np.mat(x)).flatten()
+	return np.apply_along_axis(products, 1, feats)
 
 if __name__ == '__main__':
 	# parse future transactions (testing data)
@@ -289,13 +293,20 @@ if __name__ == '__main__':
 	# Train models on features / known assignments
 	#############################################
 
-	# Impute missing (-1) values for distance
+	# replace missing (-1) values for distance with max int size
 	train_feats[train_feats == -1] = sys.maxsize
 
 	print_stars()
 	print('Multinomial Naive Bayes')
 	mnb = MultinomialNB(class_prior=[0.9, 0.1])
 	train_test_print(mnb, train_feats, test_feats, train_mask, test_mask)
+
+	print_stars()
+	print('Naive Bayes with Square Kernel')
+	mnb = MultinomialNB(class_prior=[0.9, 0.1])
+	test_prods = pairwise_products(test_feats)
+	train_prods = pairwise_products(train_feats)
+	train_test_print(mnb, train_prods, test_prods, train_mask, test_mask)
 
 	print_stars()
 	print('K-Nearest Neighbors, k = 25')
