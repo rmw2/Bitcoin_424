@@ -56,27 +56,28 @@ Factorization (Decomposition) of a matrix involves numerically approximating it 
 \textbf{Singular Value Decomposition} (SVD) determines three component matrices. The outer two are unitary and are comprised of basis vectors. The central one is diagonal and contains the singular values.
 \textbf{Non-negative Matrix Factorization} (NMF) assumes a non-negative input matrix, and determines two constituent matrices by minimizing the Frobenius norm \cite{scikit-learn}. Thus vectors are always superpositions of the components. These models are summarized in Figure~\ref{fig:matrix}.
 
-
-
-
 \subsection{Graph Feature Extraction}
 
-Lorem Ipsum.
+An entirely separate approach to the data involved extraction of a number of features from the directed-graph representation of the blockchain.  Using the python graph-processing package NetworkX \cite{nx}, each transaction in the training data was modeled as a directed edge from the node representing sending address to the node of the receiver, with the number of transactions stored as an attribute of the edge.  A subset of the graph can be seen visualized in Figure~\ref{fig:vis}. A number of features were then extracted from this graph to simulate the two classes of address pairs: that is future transaction or no future transaction.
+
+To simulate a pair in the no-transaction (negative) class, two random addresses were selected at random, repeating the selection if they already had a directed edge between them.  Then using the methods from NetworkX, the following features were compiled: out-degree of the sending address, in-degree of the receiving address, total number of transactions of each address, and the length of the shortest directed path between the two.  The positive class was simulated by selecting a transaction from the training list at random, and temporarily removing the directed edge from the graph, then computing the same features without the transaction in question, and re-adding the link before computing another pair.  Promisingly, histograms for these features tended to segregate the two classes noticably, as seen in Figure~\ref{fig:hist}.  These features were calculated for one hundred thousand random pairs, keeping the class-priors consistent with the inflated test data: 10\% positive and 90\% negative.  The same features calculated above were calculated for each pair of addresses in the test set.  
+
+\begin{figure}[!hbt]
+\begin{tabular}{cc}
+\includegraphics[width=0.5\textwidth]{figs/hist_out.png} & 
+\includegraphics[width=0.5\textwidth]{figs/hist_in_deg.png} \\ 
+\includegraphics[width=0.5\textwidth]{figs/hist_out_deg.png} & 
+\includegraphics[width=0.5\textwidth]{figs/hist_dist.png}  
+\end{tabular}
+\label{fig:hist}
+\caption{Histogram of graph-based features computed on the transaction network}
+\end{figure}
 
 \subsubsection{Classification Methods}
-
-Use different classifiers for graph feature modeling
-
-%Intuition indicates that regression may be a useful approach to the methylation imputation problem, so we survey a breadth of different regressors from the scikit-learn libraries \cite{scikit-learn}.
-
+Several models were trained on the binary classification task using the compiled feature vectors.
 \begin{itemize}
-	\item \textbf{Tree} \hspace{3.5pc}: \textit{(DT) Decision Tree (of depth 10)}
-	\item \textbf{Tree} \hspace{3.5pc}: \textit{(ET) Extra Trees Regressor (of depth 10)}
- 	\item \textbf{Linear model}\hspace{0.5pc}: \textit{(LR) Linear Regression}
-	\item \textbf{Linear model}\hspace{0.5pc}: \textit{(RR) Ridge Regression}
-	\item \textbf{Neighbors} \hspace{1.125pc} : \textit{(KNN) K Neighbors Regressor}
-	\item \textbf{Ensemble}\hspace{1.5pc} : \textit{(RF) Random Forest Regressor}
-	\item \textbf{SVM} \hspace{3pc} : \textit{(SVR) Support Vector Regression}
+	\item \textbf{Random Forest}
+	\item \textbf{Multinomial Naive Bayes}
 \end{itemize}
 
 
@@ -87,7 +88,6 @@ Use different classifiers for graph feature modeling
 \subsection{Decomposition True Positive Rates}
 
 Here we present the performance of our two matrix decomposition methods, SVD and NMF. We also compare them against 'Random,' in which the component matrices are randomly generated with elements in [0, 1]. Both of the decomposition methods perform much better than the random case, as summarized in Figure~\ref{fig:matrix}. NMF performs the best consistently, perhaps because of the non-negative assumption. It successfully identifies transactions at a true positive rate of 0.51, with an erroneous false positive rate of only 0.1. Both models however are far from optimal binary classification (a point at FPR = 0, TPR = 1). 
-
 
 \begin{figure}[!h]
 
@@ -131,8 +131,21 @@ Here we present the performance of our two matrix decomposition methods, SVD and
 
 \subsection{Graph Classifier Performance}
 
-
-Graphs are cool.
+\begin{figure}[!hbt]
+\label{fig:classifiers}
+\begin{tabular}{cc}
+% actual figures
+\includegraphics[width=0.5\textwidth]{figs/roc.png} &
+\includegraphics[width=0.5\textwidth]{figs/prc.png} \\
+% table of areas
+\multicolumn{2}{c}{\begin{tabular}{|l|c|c|c|c|}
+\hline\textbf{Model}: &  Gaussian Naive Bayes & Multinomial Naive Bayes & K-Neighbors & Random Forest  \\ \hline
+\textbf{ROC Area} & 0.500 & 0.501 & 0.818 & 0.801 \\ 
+\textbf{P-R Area} & 0.550 & 0.550 & 0.489 & 0.453  \\\hline
+\end{tabular}} 
+\end{tabular}
+\caption{Performance of binary classifiers trained on graph features.}
+\end{figure}
 
 \begin{figure}
 \centering
