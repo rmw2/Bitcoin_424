@@ -83,21 +83,19 @@ predr = [np.sum(ra[row['sender'],:] * rb[:,row['receiver']])
 
 #plotroc(label, predr, "random")
 
-
-
 os.chdir("../")
 
 parr = [pred1, pred2, predr]
 narr = ["SVN", "NMF", "Random"]
 
 for x in range(3):
-  pred = parr[x]
-  fpr, tpr, thresholds = roc_curve(label, pred)
-  roc_auc = auc(fpr, tpr)
-  print "Area under the ROC curve : %f" % roc_auc
-  matplotlib.rcParams['figure.figsize'] = (10, 10)
-  #plt.plot(fpr, tpr, label='ROC curve (area = %0.2f)' % roc_auc)
-  plt.plot(fpr, tpr, label=narr[x] % roc_auc)
+    pred = parr[x]
+    fpr, tpr, thresholds = roc_curve(label, pred)
+    roc_auc = auc(fpr, tpr)
+    print "Area under the ROC curve : %f" % roc_auc
+    matplotlib.rcParams['figure.figsize'] = (10, 10)
+    #plt.plot(fpr, tpr, label='ROC curve (area = %0.2f)' % roc_auc)
+    plt.plot(fpr, tpr, label=narr[x] % roc_auc)
 
 
 plt.plot([0, 1], [0, 1], 'k--')
@@ -113,25 +111,6 @@ plt.legend(loc="lower right", fontsize=16)
 plt.savefig("ROC.png")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #Scikit Learn SVD, Takes ~1 min
 #U, S, VT = randomized_svd(train_csr, n_components = 20, n_iter=10)
 #W = svd_model.fit_transform(train_csr)
@@ -142,21 +121,6 @@ plt.savefig("ROC.png")
 #        for index,row in dftest.iterrows()]
 #
 #plotroc(label, pred3)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -178,10 +142,4 @@ def plotroc(label, pred, fn):
     plt.legend(loc="lower right")
     #plt.show()
     plt.savefig(fn + ".png")
-
-
-
-
-
-
 

@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 from scipy import sparse
 import sys, os.path
 # sklearn
-from sklearn.naive_bayes import MultinomialNB, GaussianNB
-import sklearn.metrics as mt
 from sklearn.preprocessing import Imputer
+from sklearn.naive_bayes import MultinomialNB, GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
+import sklearn.metrics as mt
 
 n_features = 5
 
@@ -96,7 +96,7 @@ def parse_test(fname='../data/testTriplets.txt'):
     print()
     return addr, fut_mask
 
-def feat_hists(feats, mask, feat_names=None, n_bins=18):
+def feat_hists(feats, mask, feat_names=None, n_bins=12):
     """ Plot overlapping histograms of each feature, separating
     into two categories according to mask """
     n_feats = feats.shape[1] # number of features
@@ -111,7 +111,7 @@ def feat_hists(feats, mask, feat_names=None, n_bins=18):
         if feat_names[idx] == 'Directed distance along graph':
             bins = range(1,10)
         else:
-            bins = np.logspace(0, 3, n_bins)
+            bins = np.logspace(0, 2, n_bins)
 
         # plot histograms
         plt.hist(feats[mask, idx], bins, label='Positive Class',
@@ -240,8 +240,11 @@ def evaluate(model, feats, mask):
     roc = mt.roc_auc_score(mask, probs[:,1])
     # calculate precision-recall auc
     prc = mt.average_precision_score(mask, probs[:,1])
+    # calculate class labels and f1 score
+    preds = model.predict(feats)
+    f1 = mt.f1_score(mask, preds)
 
-    return roc, prc, probs
+    return roc, prc, f1, probs
 
 def plot_curves(probs_list, names, feats, mask):
     # plot each curve
@@ -285,13 +288,15 @@ def train_test_print(model, train_feats, test_feats, train_mask, test_mask):
     model.fit(train_feats, train_mask)
 
     # evaluate performance
-    roc, prc, probs = evaluate(model, test_feats, test_mask)
-    roc_train, prc_train, _ = evaluate(model, train_feats, train_mask)
+    roc, prc, f1, probs = evaluate(model, test_feats, test_mask)
+    roc_train, prc_train, f1_train, _ = evaluate(
+        model, train_feats, train_mask)
 
     print('ROC: %.3f  (%.3f)' % (roc, roc_train))
     print('PRC: %.3f  (%.3f)' % (prc, prc_train))
+    print('F1:  %.3f  (%.3f)' % (f1, f1_train))
 
-    return roc, prc, probs
+    return roc, prc, f1, probs
 
 def pairwise_products(feats):
     products = lambda x: np.asarray(np.mat(x).transpose() * np.mat(x)).flatten()
@@ -342,20 +347,21 @@ if __name__ == '__main__':
     #############################################
 
     # replace missing (-1) values for distance with max int size
-    train_feats[train_feats == -1] = sys.maxsize
+    imp = Imputer(-1)
+    train_feats = imp.fit_transform(train_feats)
+    # train_feats[train_feats == -1] = sys.maxsize
 
     print_stars()
     print('Multinomial Naive Bayes')
     mnb = MultinomialNB(class_prior=[0.9, 0.1])
-    _, _, mnb_probs = train_test_print(
+    _, _, _, mnb_probs = train_test_print(
         mnb, train_feats, test_feats, train_mask, test_mask)
-
 
     print_stars()
     print('Gaussian Naive Bayes')
     gnb = GaussianNB()
     gnb.class_prior_ = [0.9, 0.1]
-    _, _, gnb_probs = train_test_print(
+    _, _, _, gnb_probs = train_test_print(
         gnb, train_feats, test_feats, train_mask, test_mask)
 
     print_stars()
@@ -364,27 +370,25 @@ if __name__ == '__main__':
     gnb2.class_prior_ = [0.9, 0.1]
     test_prods = pairwise_products(test_feats)
     train_prods = pairwise_products(train_feats)
-    train_test_print(gnb2, train_prods, test_prods, train_mask, test_mask)
+    _, _, _, gnb2_probs = train_test_print(
+        gnb2, train_prods, test_prods, train_mask, test_mask)
 
     print_stars()
     print('K-Nearest Neighbors, k = 25')
     knn = KNeighborsClassifier(n_neighbors=25, weights='distance')
-    _, _, knn_probs = train_test_print(
+    _, _, _, knn_probs = train_test_print(
         knn, train_feats, test_feats, train_mask, test_mask)
 
     print_stars()
     print('Random Forest')
     fst = RandomForestClassifier()
-    _, _, fst_probs = train_test_print(
+    _, _, _, fst_probs = train_test_print(
         fst, train_feats, test_feats, train_mask, test_mask)
 
-
     # plot roc and precision-recal curves
-    all_probs = [mnb_probs, gnb_probs, knn_probs, fst_probs]
-    names = ['Multinomial Naive Bayes', 'Gaussian Naive Bayes',
+    all_probs = [mnb_probs, gnb_probs, gnb2_probs, knn_probs, fst_probs]
+    names = ['Multinomial Naive Bayes', 'Gaussian Naive Bayes (1)', 'Gaussian Naive Bayes (2)',
         'K-Nearest Neighbors', 'Random Forest']
     plot_curves(all_probs, names, test_feats, test_mask)
 
     # Fold the training data to optimize models?
-
-
